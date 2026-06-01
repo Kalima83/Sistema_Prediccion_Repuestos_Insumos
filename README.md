@@ -23,7 +23,7 @@ PROYECTO-FINAL-BAZAN/
 ├── .env                    # Variables de entorno y secretos
 ├── docker-compose.yml      # Orquestación de servicios
 └── requirements.txt        # Librerías: LangChain, Scikit-learn, FastAPI
-
+```
 ## Tecnologías Utilizadas
 
   * Lenguaje: Python 3.10+IA/ML: Scikit-learn / TensorFlow (Clasificación de fallas).

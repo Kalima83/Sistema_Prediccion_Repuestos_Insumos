@@ -2,28 +2,28 @@
 El sistema está diseñado bajo principios de MLOps y contenedorizado con Docker para asegurar la portabilidad en el entorno Cloud del EA.
 
 ## Estructura
-
+```text
 PROYECTO-FINAL-BAZAN/
 ├── data/
 │   ├── raw/                # Datos históricos de fallos (Ejército Argentino)
-│   ├── processed/          # Datos limpios tras fase de Preparación (CRISP-DM)
-│   └── vector_db/          # Base de datos vectorial (ChromaDB) para el RAG
+│   ├── processed/          # Datos limpios (Post-Fase 3 de CRISP-DM)
+│   └── vector_db/          # Almacenamiento de embeddings para RAG
 ├── docker/
-│   ├── Dockerfile          # Configuración de la imagen Python/IA
-│   └── entrypoint.sh       # Script de inicio del contenedor
+│   ├── Dockerfile          # Imagen base Python e instalación de dependencias
+│   └── entrypoint.sh       # Script de arranque del contenedor
 ├── src/
 │   ├── api/
-│   │   └── main.py         # API FastAPI (Interfaz del ChatBot)
+│   │   └── main.py         # Interfaz del ChatBot (HU1 y HU2)
 │   ├── brain/
-│   │   ├── model.py        # Lógica de ML para clasificación de fallos
-│   │   └── rag_engine.py   # Motor RAG para consulta de manuales técnicos
+│   │   ├── model.py        # Clasificador de fallas (ML)
+│   │   └── rag_engine.py   # Motor de consulta de manuales técnicos
 │   ├── utils/
-│   │   └── reports.py      # Generador de reportes PDF/Excel (HU5/HU7)
-│   └── database.py         # Conector a PostgreSQL/Stock
-├── tests/                  # Pruebas unitarias para validar Sprints
-├── .env                    # Variables de entorno (llaves de API, credenciales)
-├── docker-compose.yml      # Orquestación de API + DB Vectorial
-└── requirements.txt        # Librerías (LangChain, Scikit-learn, Pandas)
+│   │   └── reports.py      # Generador de PDF/Excel (HU5 y HU7)
+│   └── database.py         # Gestión de stock y persistencia
+├── .env                    # Variables de entorno y secretos
+├── docker-compose.yml      # Orquestación de servicios
+└── requirements.txt        # Librerías: LangChain, Scikit-learn, FastAPI
+
 ## Tecnologías Utilizadas
 
   * Lenguaje: Python 3.10+IA/ML: Scikit-learn / TensorFlow (Clasificación de fallas).

@@ -2,20 +2,28 @@
 El sistema está diseñado bajo principios de MLOps y contenedorizado con Docker para asegurar la portabilidad en el entorno Cloud del EA.
 
 ## Estructura
-.
-├── .github/workflows/       # CI/CD para MLOps
-├── data/                    # Datos históricos y bases vectoriales
-├── docker/                  # Dockerfile y configuración de contenedores
-├── docs/                    # Memoria técnica y manuales de usuario 
-├── src/                     # Código fuente principal
-│   ├── api/                 # API ChatBot (FastAPI/Flask)
-│   ├── brain/               # Lógica de ML y motor RAG 
-│   ├── database/            # Conexión a DB Vectorial y SQL (Stock/Equipos)
-│   └── reports/             # Generador de informes PDF/XLSX 
-├── tests/                   # Pruebas unitarias e integración 
-├── docker-compose.yml       # Orquestación de servicios
-└── requirements.txt         # Dependencias de Python
 
+PROYECTO-FINAL-BAZAN/
+├── data/
+│   ├── raw/                # Datos históricos de fallos (Ejército Argentino)
+│   ├── processed/          # Datos limpios tras fase de Preparación (CRISP-DM)
+│   └── vector_db/          # Base de datos vectorial (ChromaDB) para el RAG
+├── docker/
+│   ├── Dockerfile          # Configuración de la imagen Python/IA
+│   └── entrypoint.sh       # Script de inicio del contenedor
+├── src/
+│   ├── api/
+│   │   └── main.py         # API FastAPI (Interfaz del ChatBot)
+│   ├── brain/
+│   │   ├── model.py        # Lógica de ML para clasificación de fallos
+│   │   └── rag_engine.py   # Motor RAG para consulta de manuales técnicos
+│   ├── utils/
+│   │   └── reports.py      # Generador de reportes PDF/Excel (HU5/HU7)
+│   └── database.py         # Conector a PostgreSQL/Stock
+├── tests/                  # Pruebas unitarias para validar Sprints
+├── .env                    # Variables de entorno (llaves de API, credenciales)
+├── docker-compose.yml      # Orquestación de API + DB Vectorial
+└── requirements.txt        # Librerías (LangChain, Scikit-learn, Pandas)
 ## Tecnologías Utilizadas
 
   * Lenguaje: Python 3.10+IA/ML: Scikit-learn / TensorFlow (Clasificación de fallas).

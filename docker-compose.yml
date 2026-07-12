@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # Servicio 1: Base de Datos Relacional (PostgreSQL) - Stock de Repuestos e Insumos
+  # ----------------------------------------------------------------------------
+  db_relational:
+    image: postgres:15-alpine
+    container_name: ea_postgres_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ea_network
+
+  # ----------------------------------------------------------------------------
+  # Servicio 2: Base de Datos Vectorial (Qdrant) - Motor de Búsqueda Semántica (RAG)
+  # ----------------------------------------------------------------------------
+  vector_db:
+    image: qdrant/qdrant:latest
+    container_name: ea_qdrant_vector
+    restart: always
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - ea_network
+
+  # ----------------------------------------------------------------------------
+  # Servicio 3: API REST (FastAPI) - ChatBot Interactivo y Lógica del Sistema
+  # ----------------------------------------------------------------------------
+  api_chatbot:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: ea_chatbot_api
+    restart: always
+    ports:
+      - "${API_PORT}:${API_PORT}"
+    env_file:
+      - .env  # Carga de manera segura todas las variables de entorno locales
+    environment:
+      # Sobrescribimos los hosts locales para que apunten a los nombres de servicio de Docker
+      DB_HOST: db_relational
+      VECTOR_DB_URL: http://vector_db:6333
+    volumes:
+      - ./data:/app/data
+      - ./src:/app/src
+    depends_on:
+      - db_relational
+      - vector_db
+    networks:
+      - ea_network
+
+# Red virtual para permitir la comunicación segura entre los microservicios
+networks:
+  ea_network:
+    driver: bridge
+
+# Volúmenes persistentes para evitar pérdida de datos del inventario y del RAG
+volumes:
+  postgres_data:
+    driver: local
+  qdrant_data:
+    driver: local
+
+

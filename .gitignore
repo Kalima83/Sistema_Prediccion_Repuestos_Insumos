@@ -3,3 +3,7 @@
 .env.local
 __pycache__/
 *.pyc
+# Datos locales y Excels (No subir a Git)
+data/
+*.xlsx
+*.xls

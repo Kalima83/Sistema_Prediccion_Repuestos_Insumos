@@ -1,29 +1,65 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+# Importamos el motor real del chatbot desde la carpeta brain
+from src.brain.chatbot_motor import ChatbotMantenimiento
 
 app = FastAPI(
-    title="Sistema de Predicción de Repuestos e Insumos - B Maint Com 601",
-    description="API REST para la gestión de stock y motor de búsqueda semántica (RAG) para reportes de fallas.",
+    title="API Sistema de Predicción y Procesamiento Asistido - B Mant Com 601",
     version="1.0.0"
 )
 
-# Configuración de CORS para que tu futura interfaz frontend pueda comunicarse sin bloqueos
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Inicializamos el chatbot globalmente al arrancar la API
+bot = ChatbotMantenimiento()
+
+# Modelos de datos para validar lo que ingresa el frontend
+class ConsultaInput(BaseModel):
+    pregunta: str
+
+class SolicitudInput(BaseModel):
+    unidad: str
+    falla_descripcion: str
+
 
 @app.get("/")
 def read_root():
+    """Da la bienvenida e imprime el menú inicial estructurado."""
     return {
-        "status": "operativo",
-        "sistema": "Predicción de Repuestos v1.0.0",
-        "unidad": "Batallón de Mantenimiento de Comunicaciones 601"
+        "status": "online",
+        "mensaje_bienvenida": bot.saludar_usuario()
     }
 
-@app.get("/health")
-def health_check():
-    return {"status": "healthy", "database": "connected", "vector_db": "connected"}
+
+@app.post("/consulta")
+def procesar_consulta(data: ConsultaInput):
+    """Flujo A: Procesa preguntas en Lenguaje Natural usando el pipeline RAG."""
+    if not data.pregunta.strip():
+        raise HTTPException(status_code=400, detail="La pregunta no puede estar vacía.")
+    
+    # Consumimos el método real de búsqueda en manuales
+    respuesta_rag = bot.simular_flujo_consulta_rag(data.pregunta)
+    
+    return {
+        "tipo_flujo": "A - Consulta Técnica",
+        "pregunta_recibida": data.pregunta,
+        "respuesta_sistema": respuesta_rag
+    }
+
+
+@app.post("/solicitud")
+def procesar_solicitud(data: SolicitudInput):
+    """Flujo B: Clasifica la falla, valida la unidad y asigna Nro de Control."""
+    if not data.unidad.strip() or not data.falla_descripcion.strip():
+        raise HTTPException(status_code=400, detail="La unidad y la descripción son requeridas.")
+    
+    # Consumimos la lógica real de negocio que cruza los Excel y genera el Nro de Control (26/XXXX)
+    resultado_registro = bot.procesar_solicitud_mantenimiento(
+        dato_unidad=data.unidad,
+        texto_falla=data.falla_descripcion
+    )
+    
+    return {
+        "tipo_flujo": "B - Carga de Solicitud de Mantenimiento",
+        "nro_control": resultado_registro["nro_control"],
+        "unidad_validada_en_db": resultado_registro["unidad_validada"],
+        "detalle_procesado": resultado_registro["datos_solicitud"]
+    }

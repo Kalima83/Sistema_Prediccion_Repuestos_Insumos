@@ -52,10 +52,10 @@ def procesar_solicitud(data: SolicitudInput):
         raise HTTPException(status_code=400, detail="La unidad y la descripción son requeridas.")
     
     # Consumimos la lógica real de negocio que cruza los Excel y genera el Nro de Control (26/XXXX)
-    resultado_registro = bot.procesar_solicitud_mantenimiento(
-        dato_unidad=data.unidad,
-        texto_falla=data.falla_descripcion
-    )
+    resultado_registro = bot.procesar_y_guardar_solicitud(...)
+    dato_unidad=data.unidad,
+    texto_falla=data.falla_descripcion
+
     
     return {
         "tipo_flujo": "B - Carga de Solicitud de Mantenimiento",

@@ -51,11 +51,11 @@ def procesar_solicitud(data: SolicitudInput):
     if not data.unidad.strip() or not data.falla_descripcion.strip():
         raise HTTPException(status_code=400, detail="La unidad y la descripción son requeridas.")
     
-    # Consumimos la lógica real de negocio que cruza los Excel y genera el Nro de Control (26/XXXX)
-    resultado_registro = bot.procesar_y_guardar_solicitud(...)
-    dato_unidad=data.unidad,
-    texto_falla=data.falla_descripcion
-
+    # Consumimos la lógica real usando 'dato_unidad' para que coincida con el motor
+    resultado_registro = bot.procesar_y_guardar_solicitud(
+        dato_unidad=data.unidad,
+        texto_falla=data.falla_descripcion
+    )
     
     return {
         "tipo_flujo": "B - Carga de Solicitud de Mantenimiento",

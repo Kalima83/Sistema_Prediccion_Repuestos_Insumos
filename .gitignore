@@ -3,7 +3,12 @@
 .env.local
 __pycache__/
 *.pyc
-# Datos locales y Excels (No subir a Git)
-data/
+
+# Ignorar TODOS los archivos dentro de data, EXCEPTO el .gitkeep
+data/*
+!data/.gitkeep
+
+# Ignorar archivos Excel en cualquier otro lado
 *.xlsx
 *.xls
+*.csv

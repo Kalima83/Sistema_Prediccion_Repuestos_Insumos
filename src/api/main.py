@@ -2,6 +2,10 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 # Importamos el motor real del chatbot desde la carpeta brain
 from src.brain.chatbot_motor import ChatbotMantenimiento
+import os
+
+# Creamos la carpeta data de forma segura si no existe
+os.makedirs("data", exist_ok=True)
 
 app = FastAPI(
     title="API Sistema de Predicción y Procesamiento Asistido - B Mant Com 601",

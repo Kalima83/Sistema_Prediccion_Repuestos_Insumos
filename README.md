@@ -1,6 +1,6 @@
 # Sistema de Predicción de Repuestos e Insumos — B Mant Com 601
 
-Este sistema está diseñado bajo principios de arquitectura limpia, empaquetado para asegurar portabilidad en entornos locales y futuras migraciones al entorno Cloud del Ejército Argentino (EA). 
+Este sistema está diseñado bajo principios de arquitectura limpia, empaquetado para asegurar portabilidad en entornos locales y futuras migraciones al entorno Cloud del Ejército Argentino (EA).
 
 El núcleo actual del sistema resuelve de forma nativa la ingesta, validación flexible de unidades, efectos y fallas desde fuentes de datos reales (`.xlsx`), y gestiona las transacciones mediante un árbol de decisión persistido en una base de datos local.
 
@@ -22,9 +22,13 @@ PROYECTO-FINAL-BAZAN/
 ├── src/                                        # Código Fuente del Sistema
 │   ├── backend/                                # Lógica del Servidor, IA y Reglas de Negocio
 │   │   ├── api/
-│   │   │   └── main.py                         # [DESARROLLADO] Endpoints en FastAPI para el ChatBot (HU1 y HU2)
+│   │   │   ├── routers/                        # [NUEVO] Separación de endpoints por flujos
+│   │   │   │   ├── consulta_BE.py              # [NUEVO] Endpoints del Flujo A (Consultas RAG)
+│   │   │   │   └── reparacion_BE.py            # [NUEVO] Endpoints del Flujo B (Listas de Excel, Traductor y Carga)
+│   │   │   └── main.py                         # [ACTUALIZADO] Orquestador principal de FastAPI que une los routers
 │   │   ├── brain/
 │   │   │   ├── chatbot_motor.py                # [DESARROLLADO] Intérprete, ruteo de estados y formato 26/XXXX
+│   │   │   ├── prepare_data.py                 # [DESARROLLADO] Ingesta, chunking y vectorización de manuales
 │   │   │   ├── model.py                        # [A FUTURO] Clasificador automático de fallas mediante ML
 │   │   │   └── rag_engine.py                   # [A FUTURO] Pipeline de extracción (RAG) sobre manuales técnicos
 │   │   ├── core/
@@ -35,34 +39,37 @@ PROYECTO-FINAL-BAZAN/
 │   │       └── reports.py                      # [A FUTURO] Generador automatizado de PDF/Excel (HU5 y HU7)
 │   │
 │   └── frontend/                               # Interfaz Gráfica del Usuario
-│       └── app.py                              # [DESARROLLADO] UI interactiva y visual desarrollada con Streamlit
+│       ├── views/                              # [NUEVO] Separación de vistas para escalabilidad
+│       │   ├── consulta_FE.py                  # [NUEVO] UI del Flujo A (Chatbot de consultas técnicas)
+│       │   └── reparacion_FE.py                # [NUEVO] UI del Flujo B (Carga asistida de mantenimiento)
+│       └── app.py                              # [ACTUALIZADO] Orquestador visual principal (Menú lateral de Streamlit)
 │
 ├── .env                                        # [DESARROLLADO] Configuración de variables de entorno
 ├── .gitignore                                  # [DESARROLLADO] Exclusión de binarios y entornos virtuales
 └── requirements.txt                            # [DESARROLLADO] Dependencias optimizadas del entorno de ejecución
 
-## Tecnologías Proyectadas y Utilizadas
 
-* **Gestión de Datos e Ingesta:** Python 3.10+ y Pandas (Procesamiento nativo de planillas de Arsenales e integridad referencial).
+## Tecnologías Proyectadas y Utilizadas
+* **Gestión de Datos e Ingesta:** Python 3.10+, Pandas y OpenPyXL (Lectura y procesamiento dinámico y en tiempo real de planillas de Arsenales para garantizar integridad referencial).
 * **Persistencia Local:** SQLite3 (Motor relacional embebido para el cálculo automático de números de control e historial).
-* **Motor de API:** FastAPI + Uvicorn (Arquitectura desacoplada para comunicación síncrona de alta performance).
-* **Interfaz Visual:** Streamlit (Despliegue ágil de UI interactiva para operadores de mantenimiento).
+* **Motor de API:** FastAPI + Uvicorn (Arquitectura modular mediante `APIRouter` para comunicación síncrona de alta performance y separación de flujos).
+* **Interfaz Visual:** Streamlit (Despliegue ágil de UI interactiva con menús de navegación lateral y componentes dinámicos para operadores).
 * **Capa de Seguridad e Integridad:** Algoritmo de cifrado simétrico (AES-256) planificado en `src/backend/utils/seguridad.py` para la protección de la información operativa sensible y datos de mantenimiento restringidos.
-* **[A FUTURO] Inteligencia Artificial & RAG:** Scikit-learn / TensorFlow para la clasificación predictiva de componentes, junto con LangChain + Vector DB (ChromaDB/Qdrant) para la explotación de manuales técnicos en Lenguaje Natural.
+* **Inteligencia Artificial, PLN & RAG:** Enfoque "Human-in-the-loop" para traducción técnica de fallas. *[A FUTURO]* Scikit-learn / TensorFlow para clasificación predictiva, y LangChain + Vector DB para explotación de manuales técnicos.
 * **[A FUTURO] Infraestructura:** Contenedores Docker y Orquestación con Docker Compose para asegurar el despliegue homogéneo en el entorno del EA.
 
 ---
 
-## Estado de las Funcionalidades (Historias de Usuario - HU)
+## Estado de las Funciones (Historias de Usuario - HU)
 
 ### 1. Gestión de Solicitudes (Épica 1 & 2)
-* **Asistente Virtual (Árbol de Decisión):** *¡DESARROLLADO!* El chatbot interactúa mediante una interfaz guiada dividida en dos flujos independientes: Flujo A (Consultas) y Flujo B (Carga de Mantenimiento) para guiar al usuario en la carga de datos en lenguaje natural.
-* **Validación de Datos del Catálogo:** *¡DESARROLLADO!* El motor procesa texto libre y valida de forma automática contra los registros reales analizando Códigos, Nombres Completos o Abreviaturas (ej: "Comunicaciones Mecanizada 10"), asegurando la integridad referencial.
+* **Asistente Virtual (Diseño Híbrido):** *¡DESARROLLADO!* El sistema interactúa mediante una interfaz guiada y modularizada en dos flujos: Flujo A (Consultas Técnicas) y Flujo B (Carga Asistida de Mantenimiento), combinando selección estricta de datos con campos de lenguaje natural.
+* **Validación de Datos Dinámica:** *¡DESARROLLADO!* La interfaz consume los catálogos en tiempo real desde el Backend (Unidades, Equipos, Códigos). Asegura 100% de precisión técnica mediante menús desplegables (`selectbox`), eliminando el error de tipeo.
+* **Captura de Fallas Nuevas (Cuarentena):** *¡DESARROLLADO!* El catálogo de fallas incluye la capacidad de detectar problemas atípicos permitiendo ingresar "Nuevas Fallas" para engrosar y normalizar la base de datos a futuro.
+* **Traducción Asistida (Human-in-the-loop):** *¡DESARROLLADO!* El sistema toma la novedad escrita en texto libre por el operador, la procesa mediante NLP y le devuelve una descripción técnica normalizada para su validación manual antes del guardado.
 * **Persistencia e Identificación Operativa:** *¡DESARROLLADO!* Las solicitudes confirmadas se graban en la base de datos local y se les asigna un Identificador único correlativo institucional con el formato `26/XXXX` (Año/Número).
-* **Sistema de Carga Restringida (5 Campos):** *[A DESARROLLAR A FUTURO]* Implementación del bloqueo de interfaz que exigirá la carga mandatoria de 5 campos obligatorios para asegurar un 90% de precisión técnica antes de impactar el sistema central.
-* **Categorización Semántica (PLN):** *[A DESARROLLAR A FUTURO]* Motor inteligente basado en Machine Learning para diferenciar automáticamente problemas estandarizados de casos complejos o fallas atípicas.
-* **Explotación del Manual de Usuario (RAG):** *[A DESARROLLAR A FUTURO]* Conexión del motor RAG (`rag_engine.py`) a la base vectorial para resolver dudas complejas en Lenguaje Natural dentro del Flujo A.
-* **Resguardo Criptográfico:** *[A DESARROLLAR A FUTURO]* Ofuscación simétrica de los datos sensibles de mantenimiento mediante el módulo de seguridad.
+* **Explotación del Manual de Usuario (RAG):** *[A DESARROLLAR A FUTURO]* Conexión del motor RAG (`rag_engine.py`) a la base vectorial para resolver dudas complejas sobre reparaciones de 1er y 2do escalón dentro del Flujo A.
+* **Resguardo Criptográfico:** *[A DESARROLLAR A FUTURO]* Ofuscación simétrica de los datos sensibles de mantenimiento.
 
 ### 2. Logística y Compras (Épica 3)
 * **Predicción de Insumos Críticos:** *[A DESARROLLAR A FUTURO]* Algoritmo encargado de predecir y generar automáticamente la lista optimizada de repuestos necesarios (formato `.xlsx`) en menos de 3 minutos por solicitud procesada.
@@ -70,4 +77,5 @@ PROYECTO-FINAL-BAZAN/
 
 ### 3. Monitoreo y Reportes (Épica 4)
 * **Dashboard de Eficiencia Operativa:** *[A DESARROLLAR A FUTURO]* Panel de control para el seguimiento en tiempo real de los tiempos de reparación, configurado con alertas visuales automáticas si el proceso supera el 10% del tiempo estimado de mano de obra.
-* **Módulo de Exportación Automatizada:** *[A DESARROLLAR A FUTURO]* Lógica alojada en `src/backend/utils/
+* **Módulo de Exportación Automatizada:** *[A DESARROLLAR A FUTURO]* Lógica alojada en `src/backend/utils/reports.py` para la generación dinámica de informes de gestión, partes diarios y reportes de estado en formatos PDF y Excel estandarizados por el EA.
+```

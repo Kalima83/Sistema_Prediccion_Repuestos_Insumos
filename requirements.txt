@@ -27,3 +27,4 @@ python-multipart>=0.0.32  # Requerido por FastAPI para procesar formularios y ca
 requests>=2.34.2          # Cliente HTTP para peticiones externas
 pillow>=12.3.0            # Driver para procesamiento y visualización de imágenes
 GitPython>=3.1.51         # Automatización y control del repositorio Git corporativo desde Python
+fpdf2>=2.4.2              # Librería para generar documentos PDF

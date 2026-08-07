@@ -1,173 +1,234 @@
 import streamlit as st
 import requests
+from fpdf import FPDF
+
+API_URL = "http://127.0.0.1:8000"
+
+
+def generar_pdf_bytes(data: dict) -> bytes:
+    """Genera un comprobante oficial PDF binario en memoria sin desbordamientos de celda."""
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
+    pdf.set_margins(left=10, top=10, right=10)
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    
+    # Ancho imprimible A4: 210mm total - (10mm margen izq + 10mm margen der) = 190mm
+    ANCHO_UTIL = 190
+
+    # Encabezado estilo ticket técnico
+    pdf.set_font("Courier", style="B", size=12)
+    pdf.cell(ANCHO_UTIL, 6, "==================================================", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.cell(ANCHO_UTIL, 6, "SOLICITUD DE MANTENIMIENTO DE ELECTRÓNICA", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.cell(ANCHO_UTIL, 6, "==================================================", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.ln(4)
+
+    # Extraer variables con fallbacks
+    nro_ctl = data.get("nro_control") or data.get("nro_solicitud") or "26/0000"
+    unidad = data.get("unidad_nombre") or data.get("unidad") or "N/A"
+    cod_uni = data.get("unidad_codigo") or data.get("codigo_unidad") or ""
+    equipo = data.get("equipo_nombre") or data.get("efecto") or "N/A"
+    ni = data.get("equipo_ni") or data.get("ni") or "S/NI"
+    falla_tipo = data.get("falla_tipo") or data.get("tipo_falla") or "N/A"
+    falla_cod = data.get("falla_codigo") or data.get("codigo_falla") or "N/A"
+    detalle = data.get("descripcion_procesada") or data.get("detalle_falla") or "N/A"
+
+    pdf.set_font("Courier", size=10)
+    pdf.multi_cell(ANCHO_UTIL, 6, f"NRO DE CONTROL : {nro_ctl}", new_x="LMARGIN", new_y="NEXT")
+    pdf.multi_cell(ANCHO_UTIL, 6, f"UNIDAD        : {unidad} (Cod: {cod_uni})", new_x="LMARGIN", new_y="NEXT")
+    pdf.multi_cell(ANCHO_UTIL, 6, f"EQUIPO/EFECTO : {equipo} [NI: {ni}]", new_x="LMARGIN", new_y="NEXT")
+    pdf.multi_cell(ANCHO_UTIL, 6, f"CÓDIGO FALLA  : {falla_cod} ({falla_tipo})", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(3)
+
+    pdf.set_font("Courier", style="B", size=10)
+    pdf.cell(ANCHO_UTIL, 6, "DETALLE TÉCNICO PROCESADO POR IA:", new_x="LMARGIN", new_y="NEXT")
+    
+    pdf.set_font("Courier", size=9)
+    pdf.multi_cell(ANCHO_UTIL, 5, str(detalle), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+    pdf.set_font("Courier", style="B", size=12)
+    pdf.cell(ANCHO_UTIL, 6, "==================================================", new_x="LMARGIN", new_y="NEXT", align="C")
+
+    return bytes(pdf.output())
+
 
 def mostrar_interfaz():
     st.subheader("📝 Nueva Solicitud de Mantenimiento")
-    st.write("Completá los datos del equipo y describí el problema. Al presionar 'Procesar Descripción Técnica', se generará el borrador oficial para su revisión.")
 
-    # 1. Traer datos estructurados desde el Backend
+    if "form_key" not in st.session_state:
+        st.session_state.form_key = 0
+    if "traduccion_confirmada" not in st.session_state:
+        st.session_state.traduccion_confirmada = False
+    if "texto_traducido" not in st.session_state:
+        st.session_state.texto_traducido = ""
+    if "solicitud_guardada" not in st.session_state:
+        st.session_state.solicitud_guardada = False
+    if "datos_confirmados" not in st.session_state:
+        st.session_state.datos_confirmados = {}
+
+    k = st.session_state.form_key
+
+    # VISTA POST-REGISTRO Y DESCARGA
+    if st.session_state.solicitud_guardada:
+        data_res = st.session_state.datos_confirmados
+        nro_ctl = data_res.get("nro_control") or data_res.get("nro_solicitud") or "26/0000"
+        
+        st.balloons()
+        st.success(f"¡Solicitud registrada con éxito! Número de Control oficial asignado: **{nro_ctl}**")
+        
+        # Muestra la información directamente en pantalla
+        with st.expander("📄 Resumen de la Solicitud Confirmada", expanded=True):
+            st.write(f"**N° Control:** {nro_ctl}")
+            st.write(f"**Unidad:** {data_res.get('unidad_nombre', 'N/A')} ({data_res.get('unidad_codigo', 'N/A')})")
+            st.write(f"**Equipo:** {data_res.get('equipo_nombre', 'N/A')} [NI: {data_res.get('equipo_ni', 'S/NI')}]")
+            st.write(f"**Falla:** {data_res.get('falla_codigo', 'N/A')} - {data_res.get('falla_tipo', 'N/A')}")
+            st.write(f"**Detalle Procesado:** {data_res.get('descripcion_procesada', 'N/A')}")
+
+        # Generación segura del PDF
+        try:
+            pdf_bytes = generar_pdf_bytes(data_res)
+        except Exception as e:
+            pdf_bytes = b""
+            st.error(f"Error generando PDF: {e}")
+
+        col_pdf, col_fin = st.columns(2)
+        with col_pdf:
+            st.download_button(
+                label="📄 Descargar Comprobante PDF",
+                data=pdf_bytes,
+                file_name=f"Comprobante_{str(nro_ctl).replace('/', '_')}.pdf",
+                mime="application/pdf",
+                type="primary",
+                use_container_width=True,
+                disabled=(pdf_bytes == b"")
+            )
+
+        with col_fin:
+            if st.button("🏁 Finalizar y Cargar Nueva Solicitud", use_container_width=True):
+                st.session_state.form_key += 1
+                st.session_state.traduccion_confirmada = False
+                st.session_state.texto_traducido = ""
+                st.session_state.solicitud_guardada = False
+                st.session_state.datos_confirmados = {}
+                st.rerun()
+
+        st.markdown("---")
+        return
+
+    # CARGA DE CATÁLOGOS DESDE EL BACKEND
     try:
-        unidades_raw = requests.get("http://127.0.0.1:8000/reparacion/unidades").json()
-        equipos_raw = requests.get("http://127.0.0.1:8000/reparacion/equipos").json()
-        fallas_raw = requests.get("http://127.0.0.1:8000/reparacion/fallas").json()
+        unidades_raw = requests.get(f"{API_URL}/reparacion/unidades").json()
+        equipos_raw = requests.get(f"{API_URL}/reparacion/equipos").json()
+        fallas_raw = requests.get(f"{API_URL}/reparacion/fallas").json()
     except Exception:
-        st.error("No se pudo conectar al Backend. Asegurate de que Uvicorn esté encendido.")
+        st.error("⚠️ Error al conectar con la API REST Backend. Verifique la conexión.")
         unidades_raw, equipos_raw, fallas_raw = [], [], []
 
-    # Mapeos para los selectbox
     dict_unidades = {u["nombre"]: u for u in unidades_raw if "nombre" in u} if unidades_raw else {}
     dict_equipos = {e["nombre"]: e for e in equipos_raw if "nombre" in e} if equipos_raw else {}
     dict_fallas = {f["tipo_falla"]: f for f in fallas_raw if "tipo_falla" in f} if fallas_raw else {}
 
-    # 2. Formulario en Pantalla con Placeholders Militares
+    st.write("Completá los datos del equipo y describí el problema para generar el borrador técnico.")
+
     col1, col2 = st.columns(2)
     with col1:
         unidad_nombre_sel = st.selectbox(
-            "Unidad Solicitante *", 
+            "Unidad Solicitante *",
             options=list(dict_unidades.keys()),
-            index=None, 
-            placeholder="Ej: COMPAÑIA DE COMUNICACIONES MECANIZADA 10"
+            index=None,
+            placeholder="Seleccione la Unidad...",
+            key=f"sel_unidad_{k}"
         )
         unidad_info = dict_unidades.get(unidad_nombre_sel) if unidad_nombre_sel else None
     
     with col2:
         equipo_nombre_sel = st.selectbox(
-            "Equipo / Efecto (INE) *", 
+            "Equipo / Efecto (INE) *",
             options=list(dict_equipos.keys()),
             index=None,
-            placeholder="Ej: TRAN HARRIS HF RF"
+            placeholder="Seleccione el Equipo/Efecto...",
+            key=f"sel_equipo_{k}"
         )
         equipo_info = dict_equipos.get(equipo_nombre_sel) if equipo_nombre_sel else None
 
     col_nne, col_ni = st.columns(2)
     with col_nne:
-        nne_mostrar = equipo_info["nne"] if equipo_info else ""
-        st.text_input("Número Nacional de Efecto (NNE)", value=nne_mostrar, disabled=True, placeholder="Se autocompleta con el equipo")
+        st.text_input("Número Nacional de Efecto (NNE)", value=equipo_info["nne"] if equipo_info else "", disabled=True)
     with col_ni:
-        ni_usuario = st.text_input("Número de Identificación (NI) del equipo", placeholder="Ej: NI-4500")
+        ni_usuario = st.text_input("Número de Identificación (NI) del equipo", key=f"input_ni_{k}")
 
     falla_tipo_sel = st.selectbox(
-        "Descripción de la Falla Estándar *", 
+        "Descripción de la Falla Estándar *",
         options=list(dict_fallas.keys()),
         index=None,
-        placeholder="Ej: Falla de potencia de salida (255)"
+        placeholder="Seleccione el tipo de falla...",
+        key=f"sel_falla_{k}"
     )
     falla_info = dict_fallas.get(falla_tipo_sel) if falla_tipo_sel else None
 
     st.markdown("---")
+    descripcion_libre = st.text_area("Describa detalladamente el problema: *", key=f"input_desc_{k}")
 
-    # 3. Procesador IA de Texto Libre
-    st.write("**Descripción Detallada de la Falla**")
-    descripcion_libre = st.text_area(
-        "Describa detalladamente el problema: *", 
-        placeholder="Ej: El transceptor presenta ROE alto en la banda de HF..."
-    )
-
-    # Control de estados en Streamlit
-    if "traduccion_confirmada" not in st.session_state:
-        st.session_state.traduccion_confirmada = False
-        st.session_state.texto_traducido = ""
-
-    # Botón para Procesar
-    if st.button("Procesar Descripción Técnica con IA", width="stretch"):
-        # Validación de campos obligatorios antes de procesar
-        if not unidad_info:
-            st.error("Por favor, seleccione una Unidad Solicitante.")
-        elif not equipo_info:
-            st.error("Por favor, seleccione un Equipo o Efecto (INE).")
-        elif not falla_info:
-            st.error("Por favor, seleccione un código de Falla Estándar.")
-        elif not descripcion_libre.strip():
-            st.warning("Escribí una descripción detallada antes de procesar.")
+    if st.button("Procesar Descripción Técnica con IA", use_container_width=True):
+        if not (unidad_info and equipo_info and falla_info and descripcion_libre.strip()):
+            st.warning("Completá todos los campos requeridos (Unidad, Equipo, Falla y Descripción).")
         else:
             with st.spinner("Procesando con IA..."):
                 try:
-                    res = requests.post("http://127.0.0.1:8000/reparacion/traducir_falla", json={"texto_libre": descripcion_libre})
+                    res = requests.post(f"{API_URL}/reparacion/traducir_falla", json={"texto_libre": descripcion_libre})
                     if res.status_code == 200:
                         st.session_state.texto_traducido = res.json()["texto_traducido"]
                         st.session_state.traduccion_confirmada = True
+                        st.rerun()
                     else:
-                        st.error("Hubo un problema al conectar con el motor de IA.")
+                        st.error("⚠️ Error de procesamiento. Pruebe en unos momentos.")
                 except Exception as e:
                     st.error(f"Error de conexión: {e}")
-# 4. MUESTRA EL TICKET Y OPCIONES DE ACEPTAR/CANCELAR SÓLO SI SE PROCESÓ CON ÉXITO
+
+    # PREVISUALIZACIÓN Y REGISTRO
     if st.session_state.traduccion_confirmada and unidad_info and equipo_info and falla_info:
         st.markdown("---")
-        st.subheader("📋 Previsualización del Ticket de Control")
+        st.subheader("📋 Previsualización del Ticket")
         
-        # Datos finales limpios
-        unidad_abrev_vis = f"<b>{unidad_info['abreviatura']}</b>"
-        unidad_cod_vis = f"<b>{unidad_info['codigo']}</b>"
-        unidad_nom_vis = f"<b>{unidad_info['nombre']}</b>"
-        equipo_nom_vis = f"<b>{equipo_info['nombre']}</b>"
-        equipo_nne_vis = f"<b>{equipo_info['nne']}</b>"
-        ni_visual = f"<b>{ni_usuario}</b>" if ni_usuario.strip() else "<b>S/NI</b>"
-        falla_tipo_vis = f"{falla_info['tipo_falla']}"
-        falla_cod_vis = f"{falla_info['codigo_falla']}"
-        descripcion_visual = f"<b>{st.session_state.texto_traducido}</b>"
-
-        # Maquetado del Ticket de Control definitivo (Comillas triples perfectamente alineadas)
-        ticket_html = f"""<div style="border: 2px dashed #0E8388; padding: 22px; border-radius: 8px; background-color: #f9fbfb; font-family: monospace; color: #2C3E50;">
-<h4 style="text-align: center; margin-top: 0; color: #0E8388; letter-spacing: 1px; font-weight: bold;">SOLICITUD DE MANTENIMIENTO DE ELECTRÓNICA</h4>
-<hr style="border-top: 1px dashed #0E8388;">
-<p><b>NRO DE SOLICITUD:</b> 26/0001 <span style="color: #E74C3C; font-weight: bold; font-size: 0.85em;">[BORRADOR REVISIÓN]</span></p>
-<p><b>UNIDAD SOLICITANTE:</b> {unidad_abrev_vis} | <b>CÓDIGO:</b> {unidad_cod_vis}</p>
-<p><b>NOMBRE UNIDAD:</b> {unidad_nom_vis}</p>
-<hr style="border-top: 1px dashed #0E8388;">
-<p><b>DATOS DEL EQUIPO:</b></p>
-<ul style="margin-top: 5px;">
-<li><b>Efecto (INE):</b> {equipo_nom_vis}</li>
-<li><b>NNE:</b> {equipo_nne_vis}</li>
-<li><b>NI (Identificación):</b> {ni_visual}</li>
-</ul>
-<hr style="border-top: 1px dashed #0E8388;">
-<p><b>BLOQUE DE FALLA:</b></p>
-<p style="margin-left: 15px;"><b>Tipo de Falla:</b> {falla_tipo_vis}</p>
-<p style="margin-left: 15px;"><b>Código Asociado:</b> <span style="background-color: #EAECEE; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #2C3E50;">{falla_cod_vis}</span></p>
-<hr style="border-top: 1px dashed #0E8388;">
-<p><b>DESCRIPCIÓN TÉCNICA (IA):</b><br>{descripcion_visual}</p>
+        ticket_html = f"""<div style="border: 2px dashed #0E8388; padding: 20px; border-radius: 8px; background-color: #f9fbfb; font-family: monospace;">
+<h4>SOLICITUD DE MANTENIMIENTO DE ELECTRÓNICA</h4>
+<p><b>NRO CONTROL:</b> [Se asignará al guardar de forma atómica]</p>
+<p><b>UNIDAD:</b> {unidad_info['nombre']} ({unidad_info['codigo']})</p>
+<p><b>EQUIPO:</b> {equipo_info['nombre']} | <b>NI:</b> {ni_usuario or 'S/NI'}</p>
+<p><b>CÓDIGO FALLA:</b> {falla_info['codigo_falla']} ({falla_info['tipo_falla']})</p>
+<p><b>DETALLE TÉCNICO IA:</b> {st.session_state.texto_traducido}</p>
 </div>"""
-
         st.markdown(ticket_html, unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
 
-        # Botones de Aceptar o Cancelar distribuidos de forma horizontal
-        btn_col1, btn_col2 = st.columns(2)
-        
-        with btn_col1:
-            if st.button("Confirmar y Dar de Alta Solicitud", type="primary", width="stretch"):
+        btn1, btn2 = st.columns(2)
+        with btn1:
+            if st.button("Confirmar y Dar de Alta Solicitud", type="primary", use_container_width=True):
                 payload = {
                     "unidad_nombre": unidad_info["nombre"],
                     "unidad_abreviatura": unidad_info["abreviatura"],
                     "unidad_codigo": str(unidad_info["codigo"]),
                     "equipo_nombre": equipo_info["nombre"],
                     "equipo_nne": str(equipo_info["nne"]),
-                    "equipo_ni": ni_usuario if ni_usuario.strip() else "S/NI",
+                    "equipo_ni": ni_usuario if ni_usuario else "S/NI",
                     "falla_tipo": falla_info["tipo_falla"],
                     "falla_codigo": str(falla_info["codigo_falla"]),
                     "descripcion_procesada": st.session_state.texto_traducido
                 }
-                
                 try:
-                    res_guardar = requests.post("http://127.0.0.1:8000/reparacion/solicitud", json=payload)
-                    if res_guardar.status_code == 200:
-                        data_res = res_guardar.json()
-                        st.balloons()
-                        st.success(f"¡Solicitud registrada con éxito! Número de Control oficial asignado: **{data_res['nro_control']}**")
+                    with st.spinner("Registrando solicitud..."):
+                        res_guardar = requests.post(f"{API_URL}/reparacion/solicitud", json=payload)
                         
-                        # Reseteamos el estado para una nueva carga limpia
-                        st.session_state.traduccion_confirmada = False
-                        st.session_state.texto_traducido = ""
-                        st.rerun()
-                    else:
-                        st.error(f"Error {res_guardar.status_code} en el servidor: {res_guardar.text}")
-                except Exception as e:
-                    st.error(f"Error de conexión con el servidor backend: {e}")
+                        if res_guardar.status_code == 200:
+                            st.session_state.datos_confirmados = {**payload, **res_guardar.json()}
+                            st.session_state.solicitud_guardada = True
+                            st.rerun()
+                        else:
+                            st.error("⚠️ Error de carga. El sistema se encuentra procesando otras solicitudes, por favor intente de nuevo en unos momentos.")
+                except Exception:
+                    st.error("⚠️ No se pudo conectar con el servidor. Pruebe en unos momentos.")
 
-        with btn_col2:
-            if st.button("Cancelar / Modificar Borrador", type="secondary", width="stretch"):
-                # Limpiamos el procesamiento para volver al formulario sin ticket en pantalla
+        with btn2:
+            if st.button("Cancelar / Modificar Borrador", use_container_width=True):
                 st.session_state.traduccion_confirmada = False
                 st.session_state.texto_traducido = ""
-                st.warning("Borrador cancelado. Puede corregir los datos arriba y volver a procesar.")
                 st.rerun()

@@ -1,26 +1,37 @@
-from fastapi import FastAPI
 import os
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-# Importamos nuestros routers (módulos separados)
+# Importamos los routers modularizados
 from src.backend.api.routers import reparacion_BE, consulta_BE
 
-# Creamos la carpeta data de forma segura si no existe
+# Garantizamos la creación de la carpeta de almacenamiento persistente
 os.makedirs("data", exist_ok=True)
 
-# Inicializamos la aplicación FastAPI
+# Inicialización de la aplicación FastAPI
 app = FastAPI(
     title="API Sistema de Predicción y Procesamiento Asistido - B Mant Com 601",
     description="Backend modularizado para gestión de mantenimiento y consultas técnicas.",
-    version="2.0.0" # Subimos la versión para celebrar la nueva arquitectura
+    version="2.0.0"
 )
 
-# Conectamos los módulos a la aplicación principal
+# Configuración de CORS para permitir conexiones desde el frontend de Streamlit
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Permite peticiones desde cualquier origen local
+    allow_credentials=True,
+    allow_methods=["*"],  # Permite GET, POST, PUT, DELETE, etc.
+    allow_headers=["*"],
+)
+
+# Inclusión de los routers del sistema
 app.include_router(consulta_BE.router)
 app.include_router(reparacion_BE.router)
 
+
 @app.get("/", tags=["Sistema"])
 def read_root():
-    """Da la bienvenida y verifica que el servidor está online."""
+    """Endpoint de estado para verificar la operatividad del servidor."""
     return {
         "status": "online",
         "mensaje": "API del Sistema Logístico 601 operativa y modularizada. Lista para recibir peticiones."

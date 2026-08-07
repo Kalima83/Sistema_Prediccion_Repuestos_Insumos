@@ -2,10 +2,15 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Encontrar la ruta del directorio raíz
-BASE_DIR = Path(__file__).resolve().parent.parent
+# 1. Encontrar la ruta del directorio RAÍZ (Subimos 3 niveles desde src/backend/core)
+# config.py -> core -> backend -> src -> RAIZ DEL PROYECTO
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
-# Cargar el archivo .env
+# 2. Garantizar que la carpeta 'data' exista en la raíz del proyecto
+DATA_DIR = BASE_DIR / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+# Cargar el archivo .env desde la raíz
 load_dotenv(BASE_DIR / ".env")
 
 class Settings:
@@ -18,7 +23,12 @@ class Settings:
     # Base de datos vectorial
     VECTOR_DB_URL: str = os.getenv("VECTOR_DB_URL", "http://localhost:6333")
 
-    # Base de datos relacional
+   # Base de datos relacional (Fallback SQLite automático con ruta absoluta correcta)
+    DATABASE_URL: str = os.getenv(
+        "DATABASE_URL", 
+        f"sqlite:///{DATA_DIR.resolve()}/sistema_mantenimiento.db"
+    )
+    
     DB_HOST: str = os.getenv("DB_HOST", "localhost")
     DB_PORT: int = int(os.getenv("DB_PORT", 5432))
     DB_NAME: str = os.getenv("DB_NAME", "ea_logistica_db")

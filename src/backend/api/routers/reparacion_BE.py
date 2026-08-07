@@ -1,32 +1,62 @@
 import os
+import pickle
 import pandas as pd
+from datetime import datetime
+from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+
+from src.backend.core.nro_control_db import (
+    obtener_y_incrementar_nro_control,
+    registrar_nro_control_indice,
+    actualizar_asignacion_y_estado,
+    listar_indice_tickets,
+    consultar_nro_control
+)
 
 router = APIRouter(prefix="/reparacion", tags=["Flujo B - Reparaciones"])
+
+# --- RUTAS ABSOLUTAS DEL PROYECTO ---
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
+DATA_DIR = BASE_DIR / "data"
+TICKETS_DIR = DATA_DIR / "tickets"
+
 
 # --- MODELOS DE DATOS ---
 class SolicitudInput(BaseModel):
     unidad_nombre: str
     unidad_abreviatura: str
     unidad_codigo: str
-    equipo_nombre: str       # INE
+    equipo_nombre: str
     equipo_nne: Optional[str] = "N/A"
-    equipo_ni: Optional[str] = "N/A"   # Cargado a mano
-    falla_tipo: str          # FALLA
-    falla_codigo: str        # CODIGO
+    equipo_ni: Optional[str] = "N/A"
+    falla_tipo: str
+    falla_codigo: str
     descripcion_procesada: str
 
 class FallaTraduccionInput(BaseModel):
     texto_libre: str
 
-# --- ENDPOINTS DE CATÁLOGOS ---
+class AsignacionInput(BaseModel):
+    nro_control: str
+    estado: str
+    taller_asignado: str
+    operador_asignado: str
+    dictamen: Optional[str] = ""
+
+
+# --- ENDPOINTS DE CATÁLOGOS (EXCEL) ---
 
 @router.get("/unidades")
 def obtener_unidades():
+    file_path = DATA_DIR / "lista de unidades.xlsx"
+    if not file_path.exists():
+        print(f"⚠️ Archivo no encontrado en: {file_path}")
+        return [{"nombre": "Sin datos de unidades", "abreviatura": "S/A", "codigo": "000"}]
+
     try:
-        df = pd.read_excel("data/lista de unidades.xlsx")
+        df = pd.read_excel(file_path)
         unidades = []
         df_clean = df.dropna(subset=[df.columns[1]])
         for _, row in df_clean.iterrows():
@@ -37,13 +67,19 @@ def obtener_unidades():
             })
         return unidades
     except Exception as e:
-        print(f"Error unidades: {e}")
+        print(f"❌ Error leyendo unidades: {e}")
         return [{"nombre": "Error al cargar unidades", "abreviatura": "ERR", "codigo": "000"}]
+
 
 @router.get("/equipos")
 def obtener_equipos():
+    file_path = DATA_DIR / "Efectos_electronica_y_electricidad.xlsx"
+    if not file_path.exists():
+        print(f"⚠️ Archivo no encontrado en: {file_path}")
+        return [{"nombre": "Sin datos de equipos", "nne": "N/A"}]
+
     try:
-        df = pd.read_excel("data/Efectos_electronica_y_electricidad.xlsx")
+        df = pd.read_excel(file_path)
         equipos = []
         df_clean = df.dropna(subset=[df.columns[2]])
         for _, row in df_clean.iterrows():
@@ -53,13 +89,19 @@ def obtener_equipos():
             })
         return equipos
     except Exception as e:
-        print(f"Error equipos: {e}")
+        print(f"❌ Error leyendo equipos: {e}")
         return [{"nombre": "Error al cargar equipos", "nne": "N/A"}]
+
 
 @router.get("/fallas")
 def obtener_fallas():
+    file_path = DATA_DIR / "CODIGO_DE_FALLAS.xlsx"
+    if not file_path.exists():
+        print(f"⚠️ Archivo no encontrado en: {file_path}")
+        return [{"tipo_falla": "Sin datos de fallas", "codigo_falla": "ERR"}]
+
     try:
-        df = pd.read_excel("data/CODIGO_DE_FALLAS.xlsx")
+        df = pd.read_excel(file_path)
         fallas = []
         df_clean = df.dropna(subset=[df.columns[1]])
         for _, row in df_clean.iterrows():
@@ -70,50 +112,93 @@ def obtener_fallas():
         fallas.append({"tipo_falla": "Otra (Ingresar nueva falla)", "codigo_falla": "OTRA"})
         return fallas
     except Exception as e:
-        print(f"Error fallas: {e}")
+        print(f"❌ Error leyendo fallas: {e}")
         return [{"tipo_falla": "Error al cargar fallas", "codigo_falla": "ERR"}]
 
-# --- ENDPOINT TRADUCIR FALLA CON IA ---
+
+# --- ENDPOINT IA ---
+
 @router.post("/traducir_falla")
 def traducir_falla(data: FallaTraduccionInput):
-    """Llama a la inteligencia artificial para procesar y estandarizar la falla del operador."""
     try:
-        # Aquí puedes conectar con el motor de IA que tengas en tu chatbot_motor
-        # Hacemos un procesamiento básico de prueba por si falla la conexión con el LLM
         texto_original = data.texto_libre.strip()
-        texto_procesado = f"ANALIZADO POR IA: {texto_original.upper()} [Revisado para Laboratorio de Electrónica]"
-        
-        # Si tenés tu motor de chatbot integrado, podés llamarlo acá:
-        # from src.backend.brain.chatbot_motor import ChatbotMantenimiento
-        # bot = ChatbotMantenimiento()
-        # texto_procesado = bot.traducir_texto_militar(texto_original)
-        
+        texto_procesado = f"ANALIZADO POR IA: {texto_original.upper()} [Sugerido para Taller de Electrónica]"
         return {"texto_traducido": texto_procesado}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error en procesamiento de IA: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error en IA: {str(e)}")
 
-# --- ENDPOINT GUARDAR SOLICITUD ---
+
+# --- ENDPOINTS DE GESTIÓN DE SOLICITUDES ---
+
 @router.post("/solicitud")
 def procesar_solicitud(data: SolicitudInput):
     try:
-        texto_final = (
-            f"Unidad: {data.unidad_abreviatura} ({data.unidad_codigo}) | "
-            f"Equipo (INE): {data.equipo_nombre} (NNE: {data.equipo_nne}, NI: {data.equipo_ni}) | "
-            f"Falla: [{data.falla_codigo}] {data.falla_tipo} | "
-            f"Detalle IA: {data.descripcion_procesada}"
-        )
+        TICKETS_DIR.mkdir(parents=True, exist_ok=True)
+        nro_control_oficial = obtener_y_incrementar_nro_control(prefijo="26")
+        fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        ruta_ticket = str(TICKETS_DIR / f"{nro_control_oficial.replace('/', '_')}.dat")
         
-        from src.backend.brain.chatbot_motor import ChatbotMantenimiento
-        bot = ChatbotMantenimiento()
-        resultado_registro = bot.procesar_y_guardar_solicitud(
-            dato_unidad=data.unidad_abreviatura,
-            texto_falla=texto_final
-        )
-        
-        return {
-            "nro_control": resultado_registro.get("nro_control", "26/0001"),
-            "status": "Success"
+        datos_ticket = {
+            "nro_control": nro_control_oficial,
+            "unidad_nombre": data.unidad_nombre,
+            "unidad_abreviatura": data.unidad_abreviatura,
+            "unidad_codigo": data.unidad_codigo,
+            "equipo_nombre": data.equipo_nombre,
+            "equipo_nne": data.equipo_nne,
+            "equipo_ni": data.equipo_ni,
+            "falla_tipo": data.falla_tipo,
+            "falla_codigo": data.falla_codigo,
+            "descripcion_procesada": data.descripcion_procesada,
+            "fecha_creacion": fecha_actual,
+            "dictamen": ""
         }
+
+        # 1. Guardar ticket pesado en disco (.dat)
+        with open(ruta_ticket, "wb") as f:
+            pickle.dump(datos_ticket, f)
+
+        # 2. Guardar en el Índice SQLite
+        registrar_nro_control_indice(
+            nro_control=nro_control_oficial,
+            ruta_ticket=ruta_ticket,
+            unidad_nombre=data.unidad_nombre,
+            equipo_nombre=data.equipo_nombre,
+            falla_codigo=data.falla_codigo
+        )
+
+        return {"nro_control": nro_control_oficial, "status": "Success"}
+
     except Exception as e:
-        print(f"❌ ERROR REGISTRO: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error procesando solicitud: {str(e)}")
+
+
+@router.get("/solicitudes")
+def listar_solicitudes(operador: Optional[str] = None):
+    """Retorna la lista de tickets almacenados en el índice SQLite."""
+    return listar_indice_tickets(filtro_operador=operador)
+
+
+@router.put("/solicitud/asignar")
+def asignar_operador_y_estado(data: AsignacionInput):
+    """Permite al supervisor asignar operario, taller y actualizar el dictamen del ticket."""
+    try:
+        actualizar_asignacion_y_estado(
+            nro_control=data.nro_control,
+            estado=data.estado,
+            taller_asignado=data.taller_asignado,
+            operador_asignado=data.operador_asignado
+        )
+        
+        # Sincronizar el dictamen dentro del archivo .dat
+        res = consultar_nro_control(data.nro_control)
+        if res["existe"]:
+            datos = res["datos"]
+            datos["dictamen"] = data.dictamen
+            ruta = datos["ruta_ticket"]
+            with open(ruta, "wb") as f:
+                pickle.dump(datos, f)
+
+        return {"status": "Success", "mensaje": f"Ticket {data.nro_control} actualizado correctamente."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error actualizando asignación: {str(e)}")

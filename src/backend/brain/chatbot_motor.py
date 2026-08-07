@@ -1,11 +1,20 @@
 import os
 import sqlite3
+from pathlib import Path
 from typing import Dict, Any, Optional
 from src.backend.core.procesamiento_inventario import cargar_unidades, procesar_efectos, cargar_fallas_estandarizadas
 
-# Ruta a la base de datos
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DB_PATH = os.path.join(BASE_DIR, "data", "sistema_mantenimiento.db")
+# Ruta garantizada a la raíz del proyecto (subiendo 4 niveles desde el archivo actual)
+# archivo -> folder -> backend -> src -> RAIZ
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+DATA_DIR = BASE_DIR / "data"
+
+# Garantizar que el directorio 'data' exista
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+# Ruta absoluta como string para SQLite
+DB_PATH = str(DATA_DIR / "sistema_mantenimiento.db")
+
 
 class ChatbotMantenimiento:
     def __init__(self):

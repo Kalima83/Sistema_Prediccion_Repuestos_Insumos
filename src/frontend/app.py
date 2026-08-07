@@ -1,10 +1,15 @@
-import streamlit as st
 import os
+import streamlit as st
+from auth import login_form, logout_button
 
-# Configuración global de la página
-st.set_page_config(page_title="Sistema Logístico 601", layout="wide", page_icon="⚙️")
+# 1. Configuración global de la página (DEBE SER LA PRIMERA INSTRUCCIÓN DE STREAMLIT)
+st.set_page_config(
+    page_title="Sistema Logístico 601 - Mantenimiento de Electrónica",
+    page_icon="⚙️",
+    layout="wide"
+)
 
-# --- CONTROL DE RUTAS ABSOLUTAS ---
+# --- CONTROL DE RUTAS ABSOLUTAS Y RECURSOS ---
 DIRECTORIO_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 RUTA_LOGO = os.path.join(DIRECTORIO_ACTUAL, "assets", "escudo_bmant.png")
 RUTA_FONDO = os.path.join(DIRECTORIO_ACTUAL, "assets", "fondo_bamant.png") 
@@ -27,40 +32,57 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- BARRA LATERAL (SIDEBAR) ---
-with st.sidebar:
-    # 1. Logo del Batallón arriba de todo en el sidebar
-    if os.path.exists(RUTA_LOGO):
-        st.image(RUTA_LOGO, width=150)
-    else:
-        st.title("🛡️") # Resguardo visual
-    
-    # 2. Información Institucional completa
-    st.title("Sistema de Mantenimiento de Electrónica Asistido por IA")
-    st.subheader("Batallón de Mantenimiento de Comunicaciones 601 - DGCICD")
-    st.info("Asistente técnico interactivo para gestión de repuestos, insumos y fallas en equipos de comunicaciones.")
+# Importación diferida de vistas
+from views import consulta_FE, reparacion_FE, revision_FE
 
-# --- CUERPO PRINCIPAL ---
+def main():
+    # --- BARRA LATERAL (SIDEBAR) INSTITUCIONAL ---
+    with st.sidebar:
+        # 1. Logo institucional
+        if os.path.exists(RUTA_LOGO):
+            st.image(RUTA_LOGO, width=140)
+        else:
+            st.title("🛡️")
+        
+        # 2. Título institucional
+        st.title("Sistema de Mantenimiento de Electrónica IA")
+        st.caption("Batallón de Mantenimiento de Comunicaciones 601 - DGCICD")
+        st.info("Asistente interactivo para gestión de solicitudes, fallas e insumos de comunicaciones.")
+        
+        st.markdown("---")
+        
+        # 3. Menú de Navegación Principal
+        opcion_menu = st.radio(
+            "Seleccioná el Módulo:",
+            ["📝 Portal Solicitante (Carga/Consulta)", "🔒 Panel de Control (Revisores)"]
+        )
 
-# 1. Imagen de cabecera arriba de todo
-if os.path.exists(RUTA_FONDO):
-    st.image(RUTA_FONDO, use_container_width=True)
-else:
-    st.info("📷 Guardá 'fondo_bamant.jpg' en la carpeta assets.")
+    # --- CUERPO PRINCIPAL ---
 
-# 2. Título secundario abajo de la imagen
-st.markdown("<br>", unsafe_allow_html=True)
-st.subheader("⚙️ Sistema Logístico para Mantenimiento de Electrónica")
-st.markdown("---")
+    # 1. MÓDULO: PORTAL SOLICITANTE
+    if opcion_menu == "📝 Portal Solicitante (Carga/Consulta)":
+        # La imagen de cabecera SOLO se imprime aquí (una sola vez)
+        if os.path.exists(RUTA_FONDO):
+            st.image(RUTA_FONDO, use_container_width=True)
 
-# Importación diferida de las vistas
-from views import consulta_FE, reparacion_FE
+        st.subheader("⚙️ Portal Logístico de Mantenimiento de Electrónica")
+        st.markdown("---")
 
-# --- NAVEGACIÓN POR PESTAÑAS (TABS) ---
-tab_consulta, tab_reparacion = st.tabs(["🔍 Consulta Técnica", "📝 Cargar Solicitud de Reparación"])
+        # Pestañas para dividir Consulta y Nueva Carga
+        tab_consulta, tab_reparacion = st.tabs(["🔍 Consulta Técnica IA", "📝 Nueva Solicitud de Reparación"])
 
-with tab_consulta:
-    consulta_FE.mostrar_interfaz()
+        with tab_consulta:
+            consulta_FE.mostrar_interfaz()
 
-with tab_reparacion:
-    reparacion_FE.mostrar_interfaz()
+        with tab_reparacion:
+            reparacion_FE.mostrar_interfaz()
+
+    # 2. MÓDULO: PANEL DE CONTROL REVISORES
+    elif opcion_menu == "🔒 Panel de Control (Revisores)":
+        # Sin imagen de fondo para mantener el panel directo y despejado
+        if login_form():
+            logout_button()
+            revision_FE.mostrar_interfaz_revisor()
+
+if __name__ == "__main__":
+    main()

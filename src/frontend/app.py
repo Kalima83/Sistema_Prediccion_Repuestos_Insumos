@@ -11,8 +11,11 @@ st.set_page_config(
 
 # --- CONTROL DE RUTAS ABSOLUTAS Y RECURSOS ---
 DIRECTORIO_ACTUAL = os.path.dirname(os.path.abspath(__file__))
-RUTA_LOGO = os.path.join(DIRECTORIO_ACTUAL, "assets", "escudo_bmant.png")
-RUTA_FONDO = os.path.join(DIRECTORIO_ACTUAL, "assets", "fondo_bamant.png") 
+IRECTORIO_ACTUDAL = os.path.dirname(os.path.abspath(__file__))
+RUTA_LOGO = os.path.join(DIRECTORIO_ACTUAL, "assets", "escudo_bmant.webp")
+RUTA_FONDO = os.path.join(DIRECTORIO_ACTUAL, "assets", "fondo_bamant.webp")
+
+
 
 # --- ESTILOS CSS PERSONALIZADOS ---
 st.markdown("""
@@ -47,7 +50,7 @@ def main():
         # 2. Título institucional
         st.title("Sistema de Mantenimiento de Electrónica IA")
         st.caption("Batallón de Mantenimiento de Comunicaciones 601 - DGCICD")
-        st.info("Asistente interactivo para gestión de solicitudes, fallas e insumos de comunicaciones.")
+        st.info("Asistente interactivo para gestión de solicitudes y consultas referentes a los efectos de electrónica del Ejército Argentino.")
         
         st.markdown("---")
         

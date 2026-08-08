@@ -23,7 +23,7 @@ def generar_pdf_bytes(data: dict) -> bytes:
     pdf.ln(4)
 
     # Extraer variables con fallbacks
-    nro_ctl = data.get("nro_control") or data.get("nro_solicitud") or "26/0000"
+    nro_ctl = data.get("nro_control") or data.get("nro_solicitud") # or "26/0000"
     unidad = data.get("unidad_nombre") or data.get("unidad") or "N/A"
     cod_uni = data.get("unidad_codigo") or data.get("codigo_unidad") or ""
     equipo = data.get("equipo_nombre") or data.get("efecto") or "N/A"

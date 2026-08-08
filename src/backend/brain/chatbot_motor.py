@@ -2,6 +2,7 @@ import os
 import sqlite3
 from pathlib import Path
 from typing import Dict, Any, Optional
+from datetime import datetime
 from src.backend.core.procesamiento_inventario import cargar_unidades, procesar_efectos, cargar_fallas_estandarizadas
 
 # Ruta garantizada a la raíz del proyecto (subiendo 4 niveles desde el archivo actual)
@@ -26,9 +27,9 @@ class ChatbotMantenimiento:
     def saludar_usuario(self) -> str:
         return (
             "==========================================================\n"
-            "Usted se ha comunicado con el B Mant Com 601.\n"
+            "Bienvenido: Usted ha ingresado a la página del B Mant Com 601.\n"
             "Por favor, seleccione una opción para continuar:\n"
-            "  A) Realizar una CONSULTA TÉCNICA sobre un equipo.\n"
+            "  A) Realizar una CONSULTA TÉCNICA.\n"
             "  B) Solicitar MANTENIMIENTO para un efecto de electrónica.\n"
             "=========================================================="
         )
@@ -57,19 +58,25 @@ class ChatbotMantenimiento:
         )
         return respuesta_contexto
 
+ 
     def generar_proximo_numero_control(self) -> str:
-        """Calcula el correlativo real consultando la base de datos (Formato 26/XXXX)"""
+        """Calcula el correlativo real consultando la base de datos (Formato YY/XXXX)"""
+        anio_corto = datetime.now().strftime("%y")  # Ej: '26', '27'
+
         conexion = sqlite3.connect(DB_PATH)
         cursor = conexion.cursor()
-        
-        # Contamos cuántas solicitudes existen en el año actual (2026)
-        cursor.execute("SELECT COUNT(*) FROM solicitudes WHERE nro_control LIKE '26/%'")
-        total_año = cursor.fetchone()[0]
+
+        # Filtra por el prefijo del año actual
+        cursor.execute(
+            "SELECT COUNT(*) FROM solicitudes WHERE nro_control LIKE ?",
+            (f"{anio_corto}/%",),
+        )
+        total_anio = cursor.fetchone()[0]
         conexion.close()
-        
-        proximo_id = total_año + 1
+
+        proximo_id = total_anio + 1
         nro_formateado = str(proximo_id).zfill(4)
-        return f"26/{nro_formateado}"
+        return f"{anio_corto}/{nro_formateado}"
 
     def procesar_y_guardar_solicitud(self, dato_unidad: str, texto_falla: str) -> Dict[str, Any]:
         """Flujo B: Clasifica los datos, genera el Nro de Control y los persiste en SQLite."""

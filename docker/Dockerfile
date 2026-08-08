@@ -4,7 +4,7 @@ FROM python:3.10-slim
 # Establecemos el directorio de trabajo dentro del contenedor
 WORKDIR /app
 
-# Instala dependencias del sistema necesarias (por ejemplo, para compilar ciertas librerías)
+# Instala dependencias del sistema necesarias 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
@@ -12,11 +12,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copiamos el archivo de requerimientos primero para aprovechar la caché de Docker
 COPY requirements.txt .
 
-# Instalamos las librerías de Python de tu tesis
+# Instalamos las librerías de Python 
 RUN pip install --no-cache-dir -r requirements.txt
 
 # El código se monta mediante volúmenes en el docker-compose, 
-# pero dejamos expuesto el puerto por defecto de la API
+# dejamos expuesto el puerto por defecto de la API
 EXPOSE 8000
 
 # Comando para arrancar FastAPI con Uvicorn en modo desarrollo

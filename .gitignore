@@ -13,3 +13,6 @@ data/*
 *.xlsx
 *.xls
 *.csv
+
+# Ignorar archivos de zona de Windows
+*:Zone.Identifier

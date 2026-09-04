@@ -17,3 +17,5 @@ data/*
 # Ignorar archivos de zona de Windows
 *:Zone.Identifiervenv/
 .venv/
+venv/
+.venv/

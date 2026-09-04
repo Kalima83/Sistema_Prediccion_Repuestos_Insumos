@@ -84,7 +84,7 @@ def mostrar_interfaz_revisor():
                     key=f"est_{nro_ctl}"
                 )
 
-                if st.button("Guardar / Asignar Operario", key=f"btn_{nro_ctl}", type="primary", use_container_width=True):
+                if st.button("Guardar / Asignar Operario", key=f"btn_{nro_ctl}", type="primary", width="stretch"):
                     op_final = operador_input.strip() if operador_input.strip() else "Sin Asignar"
                     payload = {
                         "nro_control": nro_ctl,

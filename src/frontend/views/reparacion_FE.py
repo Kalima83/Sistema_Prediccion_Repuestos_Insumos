@@ -99,12 +99,12 @@ def mostrar_interfaz():
                 file_name=f"Comprobante_{str(nro_ctl).replace('/', '_')}.pdf",
                 mime="application/pdf",
                 type="primary",
-                use_container_width=True,
+                width="stretch",
                 disabled=(pdf_bytes == b"")
             )
 
         with col_fin:
-            if st.button("🏁 Finalizar y Cargar Nueva Solicitud", use_container_width=True):
+            if st.button("🏁 Finalizar y Cargar Nueva Solicitud", width="stretch"):
                 st.session_state.form_key += 1
                 st.session_state.traduccion_confirmada = False
                 st.session_state.texto_traducido = ""
@@ -169,7 +169,7 @@ def mostrar_interfaz():
     st.markdown("---")
     descripcion_libre = st.text_area("Describa detalladamente el problema: *", key=f"input_desc_{k}")
 
-    if st.button("Procesar Descripción Técnica con IA", use_container_width=True):
+    if st.button("Procesar Descripción Técnica con IA", width="stretch"):
         if not (unidad_info and equipo_info and falla_info and descripcion_libre.strip()):
             st.warning("Completá todos los campos requeridos (Unidad, Equipo, Falla y Descripción).")
         else:
@@ -202,7 +202,7 @@ def mostrar_interfaz():
 
         btn1, btn2 = st.columns(2)
         with btn1:
-            if st.button("Confirmar y Dar de Alta Solicitud", type="primary", use_container_width=True):
+            if st.button("Confirmar y Dar de Alta Solicitud", type="primary", width="stretch"):
                 payload = {
                     "unidad_nombre": unidad_info["nombre"],
                     "unidad_abreviatura": unidad_info["abreviatura"],
@@ -228,7 +228,7 @@ def mostrar_interfaz():
                     st.error("⚠️ No se pudo conectar con el servidor. Pruebe en unos momentos.")
 
         with btn2:
-            if st.button("Cancelar / Modificar Borrador", use_container_width=True):
+            if st.button("Cancelar / Modificar Borrador", width="stretch"):
                 st.session_state.traduccion_confirmada = False
                 st.session_state.texto_traducido = ""
                 st.rerun()

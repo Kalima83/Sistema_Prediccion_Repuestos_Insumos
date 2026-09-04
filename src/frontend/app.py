@@ -66,7 +66,7 @@ def main():
     if opcion_menu == "📝 Portal Solicitante (Carga/Consulta)":
         # La imagen de cabecera SOLO se imprime aquí (una sola vez)
         if os.path.exists(RUTA_FONDO):
-            st.image(RUTA_FONDO, use_container_width=True)
+            st.image(RUTA_FONDO, width="stretch")
 
         st.subheader("⚙️ Portal Logístico de Mantenimiento de Electrónica")
         st.markdown("---")

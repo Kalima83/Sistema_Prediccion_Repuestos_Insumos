@@ -30,7 +30,7 @@ def login_form() -> bool:
     with st.form("form_login"):
         user_input = st.text_input("Usuario")
         pass_input = st.text_input("Contraseña", type="password")
-        btn_submit = st.form_submit_button("Ingresar al Panel de Gestión", use_container_width=True)
+        btn_submit = st.form_submit_button("Ingresar al Panel de Gestión", width="stretch")
 
         if btn_submit:
             if verificar_credenciales(user_input, pass_input):
@@ -49,7 +49,7 @@ def logout_button():
     if st.session_state.autenticado:
         st.sidebar.markdown("---")
         st.sidebar.markdown(f"👤 **Usuario:** `{st.session_state.usuario_actual}`")
-        if st.sidebar.button("🚪 Cerrar Sesión", use_container_width=True):
+        if st.sidebar.button("🚪 Cerrar Sesión", width="stretch"):
             st.session_state.autenticado = False
             st.session_state.usuario_actual = ""
             st.rerun()

@@ -19,5 +19,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # dejamos expuesto el puerto por defecto de la API
 EXPOSE 8000
 
-# Comando para arrancar FastAPI con Uvicorn en modo desarrollo
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# CORREGIDO: Ruta exacta hacia tu backend (src.backend.api.main:app)
+CMD ["uvicorn", "src.backend.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
